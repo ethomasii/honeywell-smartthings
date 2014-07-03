@@ -26,6 +26,11 @@ metadata {
 		capability "Refresh"
 		capability "Temperature Measurement"
 		capability "Sensor"
+        
+    	command "heatLevelUp"
+		command "heatLevelDown"
+		command "coolLevelUp"
+		command "coolLevelDown"
 	}
 
 	simulator {
@@ -45,16 +50,17 @@ metadata {
                 ]
             )
         }
-        standardTile("thermostatMode", "device.thermostatMode", inactiveLabel: false, decoration: "flat") {
+        standardTile("thermostatMode", "device.thermostatMode", inactiveLabel: false, canChangeIcon: true) {
             state "heat", label:'${name}', action:"thermostat.off", icon: "st.Weather.weather14", backgroundColor: '#E14902'
             state "off", label:'${name}', action:"thermostat.cool", icon: "st.Outdoor.outdoor19"
             state "cool", label:'${name}', action:"thermostat.heat", icon: "st.Weather.weather7", backgroundColor: '#003CEC'
         }
-        standardTile("thermostatFanMode", "device.thermostatFanMode", inactiveLabel: false, decoration: "flat") {
+        standardTile("thermostatFanMode", "device.thermostatFanMode", inactiveLabel: false, canChangeIcon: true) {
             state "auto", label:'${name}', action:"thermostat.fanOn", icon: "st.Appliances.appliances11"
             state "on", label:'${name}', action:"thermostat.fanCirculate", icon: "st.Appliances.appliances11"
             state "circulate", label:'${name}', action:"thermostat.fanAuto", icon: "st.Appliances.appliances11"
         }
+
         controlTile("coolSliderControl", "device.coolingSetpoint", "slider", height: 3, width: 1, inactiveLabel: false) {
             state "setCoolingSetpoint", label:'Set temperarure to', action:"thermostat.setCoolingSetpoint", 
             backgroundColors:[
@@ -67,19 +73,94 @@ metadata {
                 [value: 96, color: "#bc2323"]
             ]               
         }
-        valueTile("coolingSetpoint", "device.coolingSetpoint", inactiveLabel: false, decoration: "flat") {
-            state "default", label:'${currentValue}°', unit:"F", backgroundColor:"#ffffff", icon:"st.appliances.appliances8"
+        valueTile("coolingSetpoint", "device.coolingSetpoint", inactiveLabel: false, canChangeIcon: true) {
+            state "default", label:'${currentValue}°', unit:"F", backgroundColors: [
+                    [value: 31, color: "#153591"],
+                    [value: 44, color: "#1e9cbb"],
+                    [value: 59, color: "#90d2a7"],
+                    [value: 74, color: "#44b621"],
+                    [value: 84, color: "#f1d801"],
+                    [value: 95, color: "#d04e00"],
+                    [value: 96, color: "#bc2323"]
+                ], icon:"st.appliances.appliances8"
         }
+        valueTile("heatingSetpoint", "device.heatingSetpoint", inactiveLabel: false, canChangeIcon: true) {
+            state "default", label:'${currentValue}°', unit:"F", backgroundColors: [
+                    [value: 31, color: "#153591"],
+                    [value: 44, color: "#1e9cbb"],
+                    [value: 59, color: "#90d2a7"],
+                    [value: 74, color: "#44b621"],
+                    [value: 84, color: "#f1d801"],
+                    [value: 95, color: "#d04e00"],
+                    [value: 96, color: "#bc2323"]
+                ], icon:"st.appliances.appliances8"
+        }        
+       
         valueTile("humidity", "device.humidity", inactiveLabel: false, decoration: "flat") {
             state "default", label:'${currentValue}%', unit:"Humidity"
         }
         standardTile("refresh", "device.thermostatMode", inactiveLabel: false, decoration: "flat") {
             state "default", action:"polling.poll", icon:"st.secondary.refresh"
         }
+        
+standardTile("heatLevelUp", "device.heatingSetpoint", canChangeIcon: false, inactiveLabel: false, decoration: "flat") {
+                        state "heatLevelUp", label:'  ', action:"heatLevelUp", icon:"st.thermostat.thermostat-up"
+        }
+        standardTile("heatLevelDown", "device.heatingSetpoint", canChangeIcon: false, inactiveLabel: false, decoration: "flat") {
+                        state "heatLevelDown", label:'  ', action:"heatLevelDown", icon:"st.thermostat.thermostat-down"
+        }
+        standardTile("coolLevelUp", "device.heatingSetpoint", canChangeIcon: false, inactiveLabel: false, decoration: "flat") {
+                        state "coolLevelUp", label:'  ', action:"coolLevelUp", icon:"st.thermostat.thermostat-up"
+        }
+        standardTile("coolLevelDown", "device.heatingSetpoint", canChangeIcon: false, inactiveLabel: false, decoration: "flat") {
+                        state "coolLevelDown", label:'  ', action:"coolLevelDown", icon:"st.thermostat.thermostat-down"
+        }        
         main "temperature"
-        details(["temperature", "thermostatMode", "thermostatFanMode", "coolSliderControl", "coolingSetpoint", "humidity", "refresh"])
+        details(["temperature", "thermostatMode", "thermostatFanMode",   "heatLevelUp", "heatingSetpoint" , "heatLevelDown", "coolLevelUp","coolingSetpoint", "coolLevelDown" , "humidity", "refresh",])
     }
 }
+
+def coolLevelUp(){
+    int nextLevel = device.currentValue("coolingSetpoint") + 1
+    
+    if( nextLevel > 99){
+    	nextLevel = 99
+    }
+    log.debug "Setting cool set point up to: ${nextLevel}"
+    setCoolingSetpoint(nextLevel)
+}
+
+def coolLevelDown(){
+    int nextLevel = device.currentValue("coolingSetpoint") - 1
+    
+    if( nextLevel < 50){
+    	nextLevel = 50
+    }
+    log.debug "Setting cool set point down to: ${nextLevel}"
+    setCoolingSetpoint(nextLevel)
+}
+
+def heatLevelUp(){
+    int nextLevel = device.currentValue("heatingSetpoint") + 1
+    
+    if( nextLevel > 90){
+    	nextLevel = 90
+    }
+    log.debug "Setting heat set point up to: ${nextLevel}"
+    setHeatingSetpoint(nextLevel)
+}
+
+def heatLevelDown(){
+    int nextLevel = device.currentValue("heatingSetpoint") - 1
+    
+    if( nextLevel < 40){
+    	nextLevel = 40
+    }
+    log.debug "Setting heat set point down to: ${nextLevel}"
+    setHeatingSetpoint(nextLevel)
+}
+
+
 
 // parse events into attributes
 def parse(String description) {
@@ -88,11 +169,40 @@ def parse(String description) {
 
 // handle commands
 def setHeatingSetpoint(temp) {
-	setTargetTemp(temp)
+	data.SystemSwitch = 'null' 
+    data.HeatSetpoint = temp
+    data.CoolSetpoint = 'null'
+    data.HeatNextPeriod = 'null'
+    data.CoolNextPeriod = 'null'
+    data.StatusHeat='1'
+    data.StatusCool='1'
+    data.FanMode = 'null'
+	setStatus()
+
+    if(data.SetStatus==1)
+	{
+        sendEvent(name: 'heatingSetpoint', value: temp as Integer)
+
+    }
+        
 }
 
 def setCoolingSetpoint(temp) {
-	setTargetTemp(temp)
+	data.SystemSwitch = 'null' 
+    data.HeatSetpoint = 'null'
+    data.CoolSetpoint = temp
+    data.HeatNextPeriod = 'null'
+    data.CoolNextPeriod = 'null'
+    data.StatusHeat='1'
+    data.StatusCool='1'
+    data.FanMode = 'null'
+	setStatus()
+    
+    if(data.SetStatus==1)
+	{
+        sendEvent(name: 'coolingSetpoint', value: temp as Integer)
+
+    }
 }
 
 def setTargetTemp(temp) {
@@ -143,8 +253,10 @@ def setThermostatMode(mode) {
         	switchPos = 'off'
         if(mode==3)
         	switchPos = 'cool'
-
+	if(data.SetStatus==1)
+	{
         sendEvent(name: 'thermostatMode', value: switchPos)
+    }
     
 }
 
@@ -182,7 +294,10 @@ def setThermostatFanMode(mode) {
     if(mode==1)
     	fanMode = 'on'
 
-    sendEvent(name: 'thermostatFanMode', value: fanMode)    
+	if(data.SetStatus==1)
+	{
+    	sendEvent(name: 'thermostatFanMode', value: fanMode)    
+    }
 
 }
 
@@ -192,6 +307,9 @@ refresh()
 }
 
 def setStatus() {
+
+	data.SetStatus = 0
+
     login()
 	log.debug "Executing 'setStatus'"
 def today= new Date()
@@ -220,6 +338,9 @@ log.debug "https://rs.alarmnet.com/TotalConnectComfort/Device/SubmitControlScree
         log.debug "Request was successful, $response.status"
  
     }
+    
+    log.debug "SetStatus is 1 now"
+    data.SetStatus = 1
 
 }
 
@@ -320,6 +441,8 @@ def refresh() {
 def login() {  
 	log.debug "Executing 'login'"
 	    
+
+        
     def params = [
         uri: 'https://rs.alarmnet.com/TotalConnectComfort/',
         headers: [
